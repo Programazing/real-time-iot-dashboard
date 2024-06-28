@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time IoT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        console.log("Chart.js loaded:", Chart);  // Check if Chart.js is loaded
+    </script>
+</head>
+<body>
+    <h1>Real-Time IoT Dashboard</h1>
+    <div id="dataContainer">
+        <p>Waiting for data...</p>
+    </div>
+    <canvas id="myChart" width="400" height="200"></canvas>
+    <script>
+        const dataContainer = document.getElementById('dataContainer');
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const ws = new WebSocket('ws://localhost:3000');
+        let chart;
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (Array.isArray(data)) {
+                dataContainer.innerHTML = ''; // Clear previous data
+                data.forEach(sensorData => {
+                    const { id, timestamp, temperature, humidity } = sensorData;
+                    const dataDiv = document.createElement('div');
+                    dataDiv.classList.add('data-item');
+                    dataDiv.innerHTML = `
+                        <p>ID: ${id}</p>
+                        <p>Timestamp: ${timestamp}</p>
+                        <p>Temperature: ${temperature} °C</p>
+                        <p>Humidity: ${humidity} %</p>
+                        <hr>
+                    `;
+                    dataContainer.appendChild(dataDiv);
+                    updateChart(sensorData);
+                });
+            } else {
+                console.error('Received unexpected data format:', data);
+                // Handle single data object case, if needed
+                const { id } = data;
+                const dataDiv = document.createElement('div');
+                dataDiv.classList.add('data-item');
+                dataDiv.innerHTML = `
+                    <p>ID: ${id}</p>
+                    <p>Unexpected data format, check console for details.</p>
+                `;
+                dataContainer.appendChild(dataDiv);
+            }
+        };
+
+        ws.onopen = () => {
+            console.log('WebSocket connection established.');
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed.');
+        };
+
+        function createChart(data) {
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [data.timestamp],
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: [data.temperature],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1,
+                            fill: false
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: [data.humidity],
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart(data) {
+            if (chart) {
+                chart.destroy(); // Destroy the existing chart instance
+            }
+            createChart(data);
+        }
+    </script>
+</body>
+</html>

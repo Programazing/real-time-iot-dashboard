@@ -1,0 +1,6 @@
+type SensorData @table @export {
+  id: ID @primaryKey
+  timestamp: String
+  temperature: String
+  humidity: String
+}
